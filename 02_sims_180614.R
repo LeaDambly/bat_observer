@@ -10,55 +10,27 @@ library(mgcv)
 source("01_functions_180614.R")
 
 # geometric population growth model----
-# create multiple time series
+z = 600 #number of roosts
+i = 0 #iterations
+# each time a roost splits, a new roost is created. As long as there are roosts, the loop is running
+# tdm_1 are the original 600 roosts, therefore the ones that are being observed
+while(z != 0){
+  i <- i+1
+  N0 <- rpois(lam = 66, n = z)
+  z <- 0
+  tdm <- melt(sapply(N0, sim, nyr = 20))
+  assign(paste("tdm", i, sep = "_"), tdm)
+  rm(tdm)
+}
 
+tdm_all <- as.list(mget(paste("tdm_", 1:i, sep="")))
+tdm_all <- bind_rows(tdm_all)
 
-nroo <- 600 #number of roosts
-N0 <- rpois(lam = 66, n = nroo) #initial pop size of each roost
-z <- 0
-tdm <- melt(sapply(N0, sim, nyr = 20)) # an array
-
-# NEXT UP: LOOP THIS !!!
-N0 <- rpois(lam = 66, n = z)
-z <- 0
-tdm2 <- melt(sapply(N0, sim, nyr = 20))
-
-N0 <- rpois(lam = 66, n = z)
-z <- 0
-tdm3 <- melt(sapply(N0, sim, nyr = 20))
-
-N0 <- rpois(lam = 66, n = z)
-z <- 0
-tdm4 <- melt(sapply(N0, sim, nyr = 20))
-
-N0 <- rpois(lam = 66, n = z)
-z <- 0
-tdm5 <- melt(sapply(N0, sim, nyr = 20))
-
-N0 <- rpois(lam = 66, n = z)
-z <- 0
-tdm6 <- melt(sapply(N0, sim, nyr = 20))
-
-N0 <- rpois(lam = 66, n = z)
-z <- 0
-tdm7 <- melt(sapply(N0, sim, nyr = 20))
-
-tdm_not <- rbind(tdm2, tdm3, tdm4, tdm5, tdm6) # those that aren't observed
-tdm_all <- rbind(tdm, tdm_not) #all pops
-
-names(tdm) <- c('year', 'site', 'count')
+names(tdm_1) <- c('year', 'site', 'count')
 names(tdm_all) <- c('year', 'site', 'count')
-qplot(data = tdm, x = year, y = count, group = site, geom = 'line')
+qplot(data = tdm_1, x = year, y = count, group = site, geom = 'line')
 qplot(data = tdm_all, x = year, y = count, group = site, geom = 'line')
 
-
-
-# site selection----
-mon <- tdm %>% 
-  group_by(site) %>%
-  do(sample_n(., round(runif(1, 0, max(tdm$year))))) %>%
-  arrange(site, year)
-qplot(data = mon, x = year, y = count, group = site, geom = 'line')
 
 
 # fit gam----
