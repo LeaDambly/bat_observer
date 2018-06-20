@@ -1,11 +1,13 @@
 # Simulation functions
 # 14 06 18 - Lea I Dambly
-sim <-function(N0 = 300, nyr = 20, mu.r = 0, se.r = 0.1) {
-  growth <- function(Nt = N0, mu.r = 0, se.r = 0.1, k = 100) {
+sim <-function(N0 = 100, nyr = 20, mu.r = 0, se.r = 0.1) {
+  growth <- function(Nt = N0, mu.r = 0, se.r = 0.1, k = 150) {
     lambda <- exp(rnorm(n = 1, mean = mu.r, sd = se.r)) #growth rate lambda
     Ntplus1 <- round(Nt * lambda, 0) #growth for that year
-    if(Ntplus1 >= k){ #if N is larger than carrying capacity k, it'll split and creates new roost z
-      Ntplus1 <- round(Ntplus1/2);
+    if(Ntplus1 >= k){ #if N is larger than k, it'll split and creates new roost z
+      Ntplus1 <- round(Ntplus1/2); 
+      # shit the new roost needs to start at the size of ntplus1...
+      # plus, it can't just run for 20 yrs again. it needs to run 20-N[t] years
       z <<- z + 1
       }
     return(Ntplus1)

@@ -34,16 +34,16 @@ qplot(data = tdm_all, x = year, y = count, group = site, geom = 'line')
 
 
 # fit gam----
-gam1 <- gam_func(tdm, c(6))
+gam1 <- gam_func(tdm_1, c(6))
 gam2 <- gam_func(tdm_all, c(6))
 
 
 # produce pop index----
-indmon1 <- index_func(tdm, gam1, c(6))
-indmon2 <- index_func(tdm_all, gam2, c(6))
+ind1 <- index_func(tdm_1, gam1, c(6))
+ind2 <- index_func(tdm_all, gam2, c(6))
 
-plot(indmon1, type='o', pch=20, cex=1, col='black')
-plot(indmon2, type='o', pch=20, cex=1, col='black')
+plot(ind1, type='o', pch=20, cex=1, col='black')
+plot(ind2, type='o', pch=20, cex=1, col='black')
 
 
 # bootstrap (should be 399 when time)----
