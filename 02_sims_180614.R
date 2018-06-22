@@ -12,13 +12,16 @@ source("01_functions_180614.R")
 # geometric population growth model----
 z = 600 #number of roosts
 i = 0 #iterations
+nyr = 20 # no of years
+x = 66 #roost size avg
+
 # each time a roost splits, a new roost is created. As long as there are roosts, the loop is running
 # tdm_1 are the original 600 roosts, therefore the ones that are being observed
 while(z != 0){
   i <- i+1
-  N0 <- rpois(lam = 66, n = z)
+  N0 <- rpois(lam = x, n = z)
   z <- 0
-  tdm <- melt(sapply(N0, sim, nyr = 20))
+  tdm <- melt(sapply(N0, sim, nyr))
   assign(paste("tdm", i, sep = "_"), tdm)
   rm(tdm)
 }
@@ -31,7 +34,13 @@ names(tdm_all) <- c('year', 'site', 'count')
 qplot(data = tdm_1, x = year, y = count, group = site, geom = 'line')
 qplot(data = tdm_all, x = year, y = count, group = site, geom = 'line')
 
+# pop growth 2----
+z = 600 #number of roosts
+nyr = 20 # no of years
+x = 66 #roost size avg
 
+N0 <- rpois(lam = x, n = z)
+tdm <- sapply(N0, sim0, nyr)
 
 # fit gam----
 gam1 <- gam_func(tdm_1, c(6))

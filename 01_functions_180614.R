@@ -1,17 +1,6 @@
 # Simulation functions
 # 14 06 18 - Lea I Dambly
-sim <-function(N0 = 100, nyr = 20, mu.r = 0, se.r = 0.1) {
-  growth <- function(Nt = N0, mu.r = 0, se.r = 0.1, k = 150) {
-    lambda <- exp(rnorm(n = 1, mean = mu.r, sd = se.r)) #growth rate lambda
-    Ntplus1 <- round(Nt * lambda, 0) #growth for that year
-    if(Ntplus1 >= k){ #if N is larger than k, it'll split and creates new roost z
-      Ntplus1 <- round(Ntplus1/2); 
-      # shit the new roost needs to start at the size of ntplus1...
-      # plus, it can't just run for 20 yrs again. it needs to run 20-N[t] years
-      z <<- z + 1
-      }
-    return(Ntplus1)
-    }
+sim0 <- function(N0 = 100, nyr = 20) {
   N <- list()
   N <- growth(N0)
   for(t in 2:nyr){
@@ -20,22 +9,46 @@ sim <-function(N0 = 100, nyr = 20, mu.r = 0, se.r = 0.1) {
   return(N)
 }
 
+growth <- function(Nt = N0, mu.r = 0, se.r = 0.1) {
+  lambda <- exp(rnorm(n = 1, mean = mu.r, sd = se.r)) #growth rate lambda
+  Ntplus1 <- round(Nt * lambda, 0) #growth for that year
+  return(Ntplus1)
+}
+
+sim1 <- function(N0 = 100, z = 600) {
+  growth <- function(Nt = N0, mu.r = 0, se.r = 0.1, k = 150) {
+    lambda <- exp(rnorm(n = 1, mean = mu.r, sd = se.r)) #growth rate lambda
+    Ntplus1 <- round(Nt * lambda, 0) #growth for that year
+    if(Ntplus1 >= k){ #if N is larger than k, it'll split and creates new roost z
+    Ntplus1 <- round(Ntplus1/2); 
+    # the new roost needs to start at the size of ntplus1...
+    # plus, it can't just run for 20 yrs again. it needs to run 20-t years
+    z <<- z + 1
+    }
+    return(Ntplus1)
+  }
+  N <- list()
+  N <- growth(N0)
+  for(t in 2:nyr){
+    N[t] <- growth(N[t-1])
+  }
+  return(N)
+}
+
+
+
+fission <- function(){
+  
+} #fct that splits roosts
 
 # Geomtric growth V2
-# creates the whole time series in one go
+# creates the whole time series in one go (ONE GROWTH!)
 gro <- function(N0 = 100, nyr = 20, mu.r = 0, se.r = 0.1){
   yrs <- seq(1, nyr, 1)
   lambda <- exp(rnorm(n = 1, mean = mu.r, sd = se.r))
   Nt <- round(N0 * lambda^yrs)
   return(Nt)
 }
-
-
-# alternative growth
-# deterministic logistic growth
-#  N <- K * N0 * exp(r * t) / (K + N0 * (exp(r * t) - 1))
-
-
 
 # GAM functions----
 # These functions have been taken and adapted from Rachel Fewsters's GAM code 
