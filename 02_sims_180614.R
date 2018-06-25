@@ -35,27 +35,73 @@ qplot(data = tdm_1, x = year, y = count, group = site, geom = 'line')
 qplot(data = tdm_all, x = year, y = count, group = site, geom = 'line')
 
 # pop growth 2----
-z = 600 #number of roosts
-nyr = 20 # no of years
+z = 1000 #number of roosts
 x = 66 #roost size avg
 
 N0 <- rpois(lam = x, n = z)
-tdm <- sapply(N0, sim0, nyr)
+fis_1 <- data.frame(N0)
+fis_1$roost <- 1:z
+fis_1$year <- 1
+colnames(fis_1) <- c("count", "L1", "year")
+fis_1 <- fis_1 %>%
+  mutate(., new = "FALSE") %>%
+  mutate(., roost = 1:nrow(fis_1))
+
+nyr = 2
+
+while(nyr <= 20){
+  obs <- lapply(N0, growth)
+  fis <- lapply(obs, split)
+  
+  fis <- melt(fis)
+  fis$year <- nyr
+  colnames(fis) <- c("count", "L1", "year")
+  
+  obs <- fis %>% 
+    distinct(.) %>%
+    mutate(., new = "FALSE")
+  dup <- fis %>% 
+    group_by(L1) %>% 
+    filter(n()>1) %>%
+    distinct(.) %>%
+    mutate(., new = "TRUE")
+  fis <- bind_rows(obs, dup, id = NULL)
+  fis <- fis %>% 
+    arrange(fis$new) %>%
+    mutate(roost = 1:nrow(fis))
+  
+  assign(paste("fis", nyr, sep = "_"), fis)
+  
+  N0 = fis$count
+  nyr = nyr+1
+}
+rm(obs)
+rm(fis)
+rm(dup)
+
+all <- mget(ls(pattern="fis_*")) %>%
+  bind_rows()
+
+all <- all[c(1,3,5)]
+
+obs <- all %>% group_by(year) %>% filter(roost <= z) %>% ungroup()
+
+
 
 # fit gam----
-gam1 <- gam_func(tdm_1, c(6))
-gam2 <- gam_func(tdm_all, c(6))
+gam_act <- gam_func(all, c(6))
+gam_obs <- gam_func(obs, c(6))
 
 
 # produce pop index----
-ind1 <- index_func(tdm_1, gam1, c(6))
-ind2 <- index_func(tdm_all, gam2, c(6))
+ind_act <- index_func(all, gam_act, c(6))
+ind_obs <- index_func(obs, gam_obs, c(6))
 
-plot(ind1, type='o', pch=20, cex=1, col='black')
-plot(ind2, type='o', pch=20, cex=1, col='black')
+plot(ind_act, type='o', pch=20, cex=1, col='black')
+plot(ind_obs, type='o', pch=20, cex=1, col='black')
 
 
-# bootstrap (should be 399 when time)----
+# bootstrap (should be higher when time)----
 boot1 <- outer_boot_func(tdm, 6, 39)
 boot2 <- outer_boot_func(mon, 6, 39)
 

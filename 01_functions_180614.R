@@ -1,20 +1,25 @@
 # Simulation functions
 # 14 06 18 - Lea I Dambly
-sim0 <- function(N0 = 100, nyr = 20) {
-  N <- list()
-  N <- growth(N0)
-  for(t in 2:nyr){
-    N[t] <- growth(N[t-1])
-    }
-  return(N)
-}
-
 growth <- function(Nt = N0, mu.r = 0, se.r = 0.1) {
   lambda <- exp(rnorm(n = 1, mean = mu.r, sd = se.r)) #growth rate lambda
   Ntplus1 <- round(Nt * lambda, 0) #growth for that year
   return(Ntplus1)
 }
 
+split <- function(Ntplus1, k = 125){
+  x <- tibble(N1 = Ntplus1)
+  x <- x %>% 
+    mutate(a = ifelse(N1 >= k, round(N1/2), NA)) %>% 
+    mutate(b = ifelse(is.na(a), N1, a)) %>%
+    select(-N1)
+  x1 <- as.vector(x$b)
+  x2 <- as.vector(na.omit(x$a))
+  x = c(x1, x2)
+  return(x)
+}
+
+
+# not modular version
 sim1 <- function(N0 = 100, z = 600) {
   growth <- function(Nt = N0, mu.r = 0, se.r = 0.1, k = 150) {
     lambda <- exp(rnorm(n = 1, mean = mu.r, sd = se.r)) #growth rate lambda
@@ -36,11 +41,6 @@ sim1 <- function(N0 = 100, z = 600) {
 }
 
 
-
-fission <- function(){
-  
-} #fct that splits roosts
-
 # Geomtric growth V2
 # creates the whole time series in one go (ONE GROWTH!)
 gro <- function(N0 = 100, nyr = 20, mu.r = 0, se.r = 0.1){
@@ -57,7 +57,7 @@ gro <- function(N0 = 100, nyr = 20, mu.r = 0, se.r = 0.1){
 
 # function to fit GAM for a range of degrees of freedom to assess
 gam_func <- function(sp, dfvec = c(6)){
-  gam <- gam(count~as.factor(site) + s(year, fx=TRUE, k=dfvec+1), 
+  gam <- gam(count~as.factor(roost) + s(year, fx=TRUE, k=dfvec+1), 
              family = poisson(link = log), data = sp)
   gam
 }
@@ -108,37 +108,37 @@ index_func <- function(sp, gam, dfvec = c(6)) {
 }
 
 boot_func <- function(sp, defree = 6) {
-  uniq_site <- unique(sp$site)
+  uniq_roost <- unique(sp$roost)
   Nentries <- length(sp$count)
   Nyears <- length(unique(sp$year))
-  Nsites <- length(uniq_site)
+  Nroosts <- length(uniq_roost)
   
-  # take sample of sites to be included in the resample 
-  sam <- sample(uniq_site, replace = T)
+  # take sample of roosts to be included in the resample 
+  sam <- sample(uniq_roost, replace = T)
   
   # lists the rows of data frame sp for inclusion in the resample
   # ragged list of rows to be included in resample (with repetitions listed separately) 
   elements_func <- function(x) {
-    (1:Nentries)[sp$site == x]
+    (1:Nentries)[sp$roost == x]
   }
   elements <- lapply(sam, elements_func)
   
-  # vector of site levels for the resample (should go from 1:nsites because want to pick nsites w/ repetition)
-  dr_site <- rep(1:Nsites, as.vector(unlist(lapply(elements, length))))
+  # vector of roost levels for the resample (should go from 1:nroosts because want to pick nroosts w/ repetition)
+  dr_roost <- rep(1:Nroosts, as.vector(unlist(lapply(elements, length))))
   
   # extract year and count data for resample 
   elements <- as.vector(unlist(elements))
-  data_resample <- data.frame(site = dr_site, 
+  data_resample <- data.frame(roost = dr_roost, 
                               year = sp$year[elements],
                               count = sp$count[elements])
   
   # fit GAM on resample
-  dr_gam <- gam(count~ s(year, fx=TRUE, k=defree+1) + as.factor(site), family = 
+  dr_gam <- gam(count~ s(year, fx=TRUE, k=defree+1) + as.factor(roost), family = 
                   poisson(link = log), data = data_resample)	#
   
-  # Data frame for prediction w/ all years, sites and covariates
+  # Data frame for prediction w/ all years, roosts and covariates
   year_base <- min(sp$year)-1
-  dr_new <- expand.grid(year=year_base+1:Nyears, site=sort(unique(dr_site)))
+  dr_new <- expand.grid(year=year_base+1:Nyears, roost=sort(unique(dr_roost)))
   
   # predict from model for all years
   result <- predict.gam(dr_gam, newdata=dr_new, type = "terms")                
