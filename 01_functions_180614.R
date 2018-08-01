@@ -6,11 +6,12 @@ growth <- function(Nt = N0, mu.r = 0, se.r = 0.1) {
   return(Ntplus1)
 }
 
-split <- function(Ntplus1, k = 125){
-  x <- tibble(N1 = Ntplus1)
+# To do: some maths -> how would this work with different divisors?
+split <- function(Ntplus1, k = 110){
+  x <- tibble(N1 = Ntplus1) # the population for that year per site
   x <- x %>% 
-    mutate(a = ifelse(N1 >= k, round(N1/2), NA)) %>% 
-    mutate(b = ifelse(is.na(a), N1, a)) %>%
+    mutate(a = ifelse(N1 >= k, round(N1/2), NA)) %>% # new column a: if pop is >=k, it get's halved, if not, it gets replaced by NA
+    mutate(b = ifelse(is.na(a), N1, a)) %>% # new column b: if there is NA in column a, it get's replaced by pop size, if there isn't an NA, it gets the halved pop
     select(-N1)
   x1 <- as.vector(x$b)
   x2 <- as.vector(na.omit(x$a))
@@ -18,8 +19,13 @@ split <- function(Ntplus1, k = 125){
   return(x)
 }
 
+rmse_func <- function(gamsp) {
+  error <- residuals.gam(gamsp)
+  rmse <- sqrt(mean((error)^2))
+  rmse
+}
 
-# not modular version
+# not modular version----
 sim1 <- function(N0 = 100, z = 600) {
   growth <- function(Nt = N0, mu.r = 0, se.r = 0.1, k = 150) {
     lambda <- exp(rnorm(n = 1, mean = mu.r, sd = se.r)) #growth rate lambda
@@ -41,7 +47,7 @@ sim1 <- function(N0 = 100, z = 600) {
 }
 
 
-# Geomtric growth V2
+# Geomtric growth V2----
 # creates the whole time series in one go (ONE GROWTH!)
 gro <- function(N0 = 100, nyr = 20, mu.r = 0, se.r = 0.1){
   yrs <- seq(1, nyr, 1)
