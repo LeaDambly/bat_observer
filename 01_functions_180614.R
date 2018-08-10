@@ -6,18 +6,55 @@ growth <- function(Nt = N0, mu.r = 0, se.r = 0.1) {
   return(Ntplus1)
 }
 
-# To do: some maths -> how would this work with different divisors?
-split <- function(Ntplus1, k = 110){
-  x <- tibble(N1 = Ntplus1) # the population for that year per site
-  x <- x %>% 
-    mutate(a = ifelse(N1 >= k, round(N1/2), NA)) %>% # new column a: if pop is >=k, it get's halved, if not, it gets replaced by NA
-    mutate(b = ifelse(is.na(a), N1, a)) %>% # new column b: if there is NA in column a, it get's replaced by pop size, if there isn't an NA, it gets the halved pop
+# TO DO randomise whether it splits or not
+split <- function(obs, k = 80, n = 3){
+  #perc <-  runif(1, 0.7, 1.0)
+  
+  x <- tibble(N1 = unlist(obs)) # the population for that year per site
+  
+  x <- x %>%
+    
+    #sample_frac(perc) %>% # Problem: How do we know which ones got sampled and which ones didn't for recombination?
+    
+    mutate(a = ifelse(N1 >= k, round(N1/n), NA)) %>% 
+    
+    mutate(b = ifelse(is.na(a), N1, (a*n)-a)) %>% 
     select(-N1)
   x1 <- as.vector(x$b)
   x2 <- as.vector(na.omit(x$a))
   x = c(x1, x2)
   return(x)
 }
+
+# TO DO attractiveness may change with time
+accessability <- function(obs){
+  # people will likely only monitor sites that are easily accessible/more attractive
+  roost <- obs %>% filter(year == 1) %>% select(roost)
+  
+  # 1 = not attractive, 3 = very attractive
+  seqq <- c(1,1,2,2,2,3,3,3,3,3)
+  r <- length(roost$roost)/length(seqq)
+  acc <- sample(rep.int(seqq, r))
+  roost$acc <- acc
+  roost <- as.data.frame(roost)
+  obs$acc <- roost[match(obs$roost, roost$roost), 2]
+  
+  # weighted random sized (between 0.7-0.9%) random sample
+  perc <- runif(1, 0.7, 0.9)
+  obs2 <- obs %>% filter(year == 1) %>% sample_frac(., size = perc, weight = acc)
+  obs <- semi_join(obs, obs2, by = "roost")
+  mon <- as.data.frame(obs[c(1:3)])
+  return(mon)
+  }
+
+# TO DO sample with increasing probability? (ie the longer they sample, the more likely they are to go on)
+# something with weights?
+start_stop_monitoring <- function(mon) {
+  # start monitoring at random and stop at random
+  sam <- mon %>% group_by(roost) %>% sample_frac(., size = runif(1, 0.6, 0.9)) %>% arrange(roost, year)
+  sam <- as.data.frame(sam)
+  return(sam)
+  }
 
 rmse_func <- function(gamsp) {
   error <- residuals.gam(gamsp)
@@ -102,7 +139,6 @@ index_func <- function(sp, gam, dfvec = c(6)) {
     
     index_df <- data.frame(years_ord, index_df)    
     
-    cat("df ", dfval, " complete \n")
     index_df
     
     
