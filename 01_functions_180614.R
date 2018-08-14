@@ -6,23 +6,43 @@ growth <- function(Nt = N0, mu.r = 0, se.r = 0.1) {
   return(Ntplus1)
 }
 
-# TO DO randomise whether it splits or not
-split <- function(obs, k = 80, n = 3){
-  #perc <-  runif(1, 0.7, 1.0)
+split <- function(spl, k = 80, n = 3){
+  perc <-  runif(1, 0.7, 1.0)
   
-  x <- tibble(N1 = unlist(obs)) # the population for that year per site
+  x <- spl # the population for that year per site
+  
+  x2 <- x %>%
+    
+    sample_frac(perc) %>%
+    
+    rowwise() %>%
+    
+    mutate(a = ifelse(count >= k, round(count/n), NA)) %>% 
+    
+    mutate(b = ifelse(is.na(a), count, (a*n)-a)) %>% 
+    
+    select(-count)
+ 
+  x <- full_join(x, x2, by = c("roost", "year"))
   
   x <- x %>%
     
-    #sample_frac(perc) %>% # Problem: How do we know which ones got sampled and which ones didn't for recombination?
+    mutate(c = ifelse(is.na(b), count, b))
+ 
+  x2 <- x %>% select(a) %>% na.omit(a) %>% rename(., "c" = "a")
+   
+  x <- x[c(3,6)]
+  
+  x <-  x %>% 
     
-    mutate(a = ifelse(N1 >= k, round(N1/n), NA)) %>% 
+    bind_rows(x2) %>%
     
-    mutate(b = ifelse(is.na(a), N1, (a*n)-a)) %>% 
-    select(-N1)
-  x1 <- as.vector(x$b)
-  x2 <- as.vector(na.omit(x$a))
-  x = c(x1, x2)
+    replace_na(list(year = nyr)) %>%
+    
+    tibble::rownames_to_column(., var = "roost")
+    
+    x$roost <- as.numeric(x$roost)
+  
   return(x)
 }
 

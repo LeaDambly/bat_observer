@@ -4,11 +4,9 @@
 library(ggplot2)
 library(reshape2)
 library(dplyr)
+library(tidyr)
 library(mgcv)
 library(gridExtra)
-library(grid)
-library(rmarkdown)
-
 source("01_functions_180614.R")
 
 
@@ -29,43 +27,22 @@ nyr = 2
 
 while(nyr <= 20){
   spl <- lapply(N0, growth) # populations for that year
-  fis <- lapply(spl, split) # split pops
-  
-  fis <- melt(fis)
-  fis$year <- nyr
-  colnames(fis) <- c("count", "L1", "year")
-  
   spl <- melt(spl)
   spl$year <- nyr
-  colnames(spl) <- c("count", "L1", "year")
-  
-  # remove 'extra' roosts in spl (==observed)
-  spl <- spl%>% 
-    distinct(.) %>%
-    arrange(L1)
-  spl <- spl[1:z,]
-  
-  # join all roosts for fis (==actual)
-  dup <- fis %>% 
-    group_by(L1) %>% 
-    filter(n()>1) %>%
-    distinct(.)
-    
-  fis <- bind_rows(spl, dup, id = NULL)
-  
-  fis <- fis %>% 
-   mutate(roost = 1:nrow(fis))
-  
+  colnames(spl) <- c("count", "roost", "year")
+
+  fis <- split(spl, k = 80, n = 3) # split pops
+
   N0 = fis$count
   
   assign(paste("fis", nyr, sep = "_"), fis)
   
   nyr = nyr+1
+  gc()
 }
 
 rm(spl)
 rm(fis)
-rm(dup)
 
 all <- mget(ls(pattern="fis_*")) %>%
   bind_rows()
@@ -93,7 +70,7 @@ rm(gama)
 rm(gamb)
 rm(inda)
 rm(indb)
-
+gc()
 
 
 i <- i+1
@@ -109,12 +86,15 @@ all_act$reps <- as.factor(all_act$reps)
 all_obs$reps <- c(0, rep(1:(nrow(all_obs)-1) %/% 20))
 all_obs$reps <- as.factor(all_obs$reps)
 
-ggplot(NULL) +
+pl1 <- ggplot(NULL) +
   geom_line(data = all_act, aes(years_ord, index_df, group = reps), colour = "red", alpha = 0.5) +
+  geom_hline(yintercept = 1, size = 0.5)
+
+pl2 <- ggplot(NULL) +
   geom_line(data = all_obs, aes(years_ord, index_df, group = reps), colour = "blue",  alpha = 0.5) +
   geom_hline(yintercept = 1, size = 0.5)
-  
 
+grid.arrange(pl1, pl2, ncol = 2)
 
 
 ### Roost switch
