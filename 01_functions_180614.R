@@ -7,15 +7,13 @@ growth <- function(Nt = N0, mu.r = 0, se.r = 0.1) {
 }
 
 split <- function(spl, k = 80, n = 3){
-  perc <-  runif(1, 0.7, 1.0)
+  perc <-  runif(1, 0.6, 0.9)
   
-  x <- spl # the population for that year per site
+  w <- spl # the population for that year per site
   
-  x2 <- x %>%
+  w2 <- w %>%
     
     sample_frac(perc) %>%
-    
-    rowwise() %>%
     
     mutate(a = ifelse(count >= k, round(count/n), NA)) %>% 
     
@@ -23,33 +21,35 @@ split <- function(spl, k = 80, n = 3){
     
     select(-count)
  
-  x <- full_join(x, x2, by = c("roost", "year"))
+  w <- full_join(w, w2, by = c("roost", "year"))
   
-  x <- x %>%
+  w <- w %>%
     
     mutate(c = ifelse(is.na(b), count, b))
  
-  x2 <- x %>% select(a) %>% na.omit(a) %>% rename(., "c" = "a")
+  w2 <- w %>% select(a) %>% na.omit(a) %>% rename(., "c" = "a")
    
-  x <- x[c(3,6)]
+  w <- w[c(3,6)]
   
-  x <-  x %>% 
+  w <-  w %>% 
     
-    bind_rows(x2) %>%
+    bind_rows(w2) %>%
     
     replace_na(list(year = nyr)) %>%
     
     tibble::rownames_to_column(., var = "roost")
     
-    x$roost <- as.numeric(x$roost)
+  w$roost <- as.numeric(w$roost)
+    
+  colnames(w)[3] <- c("count")
   
-  return(x)
+  return(w)
 }
 
-# TO DO attractiveness may change with time
+# TO DO should people pick a roost up again that has been dropped after it become too unattractive?
 accessability <- function(obs){
   # people will likely only monitor sites that are easily accessible/more attractive
-  roost <- obs %>% filter(year == 1) %>% select(roost)
+  roost <- obs %>% select(roost)
   
   # 1 = not attractive, 3 = very attractive
   seqq <- c(1,1,2,2,2,3,3,3,3,3)
@@ -59,19 +59,17 @@ accessability <- function(obs){
   roost <- as.data.frame(roost)
   obs$acc <- roost[match(obs$roost, roost$roost), 2]
   
-  # weighted random sized (between 0.7-0.9%) random sample
-  perc <- runif(1, 0.7, 0.9)
-  obs2 <- obs %>% filter(year == 1) %>% sample_frac(., size = perc, weight = acc)
-  obs <- semi_join(obs, obs2, by = "roost")
-  mon <- as.data.frame(obs[c(1:3)])
-  return(mon)
+  # weighted random sized (between 65-85%) sample
+  perc <- runif(1, 0.65, 0.85)
+  obs <- obs %>% sample_frac(., size = perc, weight = acc)
+  return(obs)
   }
 
 # TO DO sample with increasing probability? (ie the longer they sample, the more likely they are to go on)
 # something with weights?
 start_stop_monitoring <- function(mon) {
   # start monitoring at random and stop at random
-  sam <- mon %>% group_by(roost) %>% sample_frac(., size = runif(1, 0.6, 0.9)) %>% arrange(roost, year)
+  sam <- mon %>% group_by(roost) %>% sample_frac(., size = runif(1, 0.65, 0.85)) %>% arrange(roost, year)
   sam <- as.data.frame(sam)
   return(sam)
   }
