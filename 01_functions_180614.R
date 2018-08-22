@@ -6,7 +6,7 @@ growth <- function(Nt = N0, mu.r = 0, se.r = 0.1) {
   return(Ntplus1)
 }
 
-split <- function(spl, k = 80, n = 3){
+split <- function(spl, k = 80, n = 3, yr = nyr){
   perc <-  runif(1, 0.6, 0.9)
   
   w <- spl # the population for that year per site
@@ -35,7 +35,7 @@ split <- function(spl, k = 80, n = 3){
     
     bind_rows(w2) %>%
     
-    replace_na(list(year = nyr)) %>%
+    replace_na(list(year = yr)) %>%
     
     tibble::rownames_to_column(., var = "roost")
     
