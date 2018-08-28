@@ -6,7 +6,7 @@ growth <- function(Nt = N0, mu.r = 0, se.r = 0.1) {
   return(Ntplus1)
 }
 
-split <- function(spl, k = 80, n = 3, yr = nyr){
+split <- function(spl, k = 120, n = 3, yr = nyr){
   perc <-  runif(1, 0.6, 0.9)
   
   w <- spl # the population for that year per site
@@ -78,37 +78,6 @@ rmse_func <- function(gamsp) {
   error <- residuals.gam(gamsp)
   rmse <- sqrt(mean((error)^2))
   rmse
-}
-
-# not modular version----
-sim1 <- function(N0 = 100, z = 600) {
-  growth <- function(Nt = N0, mu.r = 0, se.r = 0.1, k = 150) {
-    lambda <- exp(rnorm(n = 1, mean = mu.r, sd = se.r)) #growth rate lambda
-    Ntplus1 <- round(Nt * lambda, 0) #growth for that year
-    if(Ntplus1 >= k){ #if N is larger than k, it'll split and creates new roost z
-    Ntplus1 <- round(Ntplus1/2); 
-    # the new roost needs to start at the size of ntplus1...
-    # plus, it can't just run for 20 yrs again. it needs to run 20-t years
-    z <<- z + 1
-    }
-    return(Ntplus1)
-  }
-  N <- list()
-  N <- growth(N0)
-  for(t in 2:nyr){
-    N[t] <- growth(N[t-1])
-  }
-  return(N)
-}
-
-
-# Geomtric growth V2----
-# creates the whole time series in one go (ONE GROWTH!)
-gro <- function(N0 = 100, nyr = 20, mu.r = 0, se.r = 0.1){
-  yrs <- seq(1, nyr, 1)
-  lambda <- exp(rnorm(n = 1, mean = mu.r, sd = se.r))
-  Nt <- round(N0 * lambda^yrs)
-  return(Nt)
 }
 
 # GAM functions----
