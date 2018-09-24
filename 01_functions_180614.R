@@ -1,9 +1,64 @@
 # Simulation functions
 # 14 06 18 - Lea I Dambly
-growth <- function(Nt = N0, mu.r = 0, se.r = 0.1) {
+#for no growth, change se.r = 0
+growth <- function(Nt = N0, mu.r = 0, se.r = 0.0) {
   lambda <- exp(rnorm(n = 1, mean = mu.r, sd = se.r)) #growth rate lambda
   Ntplus1 <- round(Nt * lambda, 0) #growth for that year
   return(Ntplus1)
+}
+
+switch1 <- function(pogr){
+  perc <-  runif(1, 0.1, 0.3)
+  
+  w <- pogr # the population for that year per site
+  colnames(w) <- c("count", "roost", "year")
+  
+  w2 <- w %>% sample_frac(perc) #roosts that switch
+  
+  w3 <- suppressMessages(anti_join(w, w2)) #remove switched roosts from original df
+  
+  colnames(w2) <- c("count", "orgroost", "year")
+  w4 <- w2 #copy switched roosts
+  w4$count = 0  #set count to zero (this is the count of their origin roost)
+  
+  w3 <- w3 %>% bind_rows(w4) #add 0 counts to orig
+  
+  w3 <- w3 %>% mutate(r = ifelse(is.na(orgroost), roost, orgroost)) %>% arrange(r)
+  
+  w3 <- w3[c(1,3)]
+  
+  w <-  w3 %>% 
+    
+    bind_rows(w2) %>% #top newly switched roosts on top of orig roosts
+    
+    tibble::rownames_to_column(., var = "roost")
+  w$roost <- as.numeric(w$roost)
+  
+  return(w)
+}
+
+switch2 <- function(ltsw){
+  perc <-  runif(1, 0.5, 0.8)
+  
+  w <- ltsw
+  
+  w2 <- w %>% filter(!is.na(orgroost)) %>% sample_frac(perc)
+  
+  w <- suppressMessages(anti_join(w, w2))
+  
+  w2$roost <- w2$orgroost
+  
+  w2$orgroost <- NA
+  
+  w$count2 <- w2[match(w$roost, w2$roost),2]
+  
+  w <- w %>% mutate(a = ifelse(is.na(count2), count, count2))
+  
+  w <- w[c(1,3,4,6)]
+  colnames(w) <- c("roost", "year", "orgroost", "count")
+  
+  return(w)
+  
 }
 
 split <- function(spl, k = 120, n = 3, yr = nyr){
@@ -20,15 +75,15 @@ split <- function(spl, k = 120, n = 3, yr = nyr){
     mutate(b = ifelse(is.na(a), count, (a*n)-a)) %>% 
     
     select(-count)
- 
+  
   w <- full_join(w, w2, by = c("roost", "year"))
   
   w <- w %>%
     
     mutate(c = ifelse(is.na(b), count, b))
- 
+  
   w2 <- w %>% select(a) %>% na.omit(a) %>% rename(., "c" = "a")
-   
+  
   w <- w[c(3,6)]
   
   w <-  w %>% 
@@ -38,9 +93,9 @@ split <- function(spl, k = 120, n = 3, yr = nyr){
     replace_na(list(year = yr)) %>%
     
     tibble::rownames_to_column(., var = "roost")
-    
+  
   w$roost <- as.numeric(w$roost)
-    
+  
   colnames(w)[3] <- c("count")
   
   return(w)

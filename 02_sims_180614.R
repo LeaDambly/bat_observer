@@ -18,32 +18,32 @@ splcom <- foreach(i = 1:100, .packages = c("tidyr", "dplyr", "mgcv", "reshape2")
   
   # first year populations
   N0 <- rpois(lam = x, n = z)
-  fis_1 <- data.frame(N0)
-  fis_1$roost <- 1:z
-  fis_1$year <- 1
-  colnames(fis_1) <- c("count", "roost", "year")
-  
+  pogr_1 <- data.frame(N0)
+  pogr_1$roost <- 1:z
+  pogr_1$year <- 1
+  colnames(pogr_1) <- c("count", "roost", "year")
+
   nyr = 2
   
   while(nyr <= 20){
-    spl <- lapply(N0, growth) # population growth for that year
-    spl <- melt(spl)
-    spl$year <- nyr
-    colnames(spl) <- c("count", "roost", "year")
+    pogr <- lapply(N0, growth) # population growth for that year
+    pogr <- melt(spl)
+    pogr$year <- nyr
     
-    fis <- split(spl, k = 100, n = 3, yr = nyr) # fission them
+    ltsw <- switch1(pogr)
+    ltsw <- switch2(ltsw)
     
-    N0 = fis$count
-    assign(paste("fis", nyr, sep = "_"), fis)
+    N0 = ltsw$count
+    assign(paste("ltsw", nyr, sep = "_"), ltsw)
     
     nyr = nyr+1
     gc()
   }
   
-  rm(spl)
-  rm(fis)
+  rm(ltsw)
+  rm(pogr)
   
-  all <- mget(ls(pattern="fis_*")) %>%
+  all <- mget(ls(pattern="ltsw_*")) %>%
     bind_rows()
   
   act <- all[c(1:3)]
@@ -53,7 +53,7 @@ splcom <- foreach(i = 1:100, .packages = c("tidyr", "dplyr", "mgcv", "reshape2")
   
   org <- act %>% filter(roost <= z)
   rm(all)
-  rm(list = ls(pattern="fis_*"))
+  rm(list = ls(pattern="ltsw_*"))
   
   obs <- accessability(org)
   obs <- obs[c(1:3)]
