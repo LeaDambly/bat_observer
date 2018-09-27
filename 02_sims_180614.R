@@ -5,30 +5,24 @@ library(foreach)
 library(doParallel)
 
 # make parallel----
-numCores <- detectCores()
+numCores <- detectCores()-2
 cl <- makeCluster(numCores)
 registerDoParallel(cl)
 
-clusterCall(cl, function() { source("01_functions_180614.R") })
-
 # run sim----
-splcom <- foreach(i = 1:100, .packages = c("tidyr", "dplyr", "mgcv", "reshape2")) %do%{
+swicom <- foreach(i = 1:2, .packages = c("tibble", "tidyr", "dplyr", "mgcv", "reshape2")) %do%{
   z = 300 #number of monitored roosts
   x = 66 #roost size avg
   
   # first year populations
   N0 <- rpois(lam = x, n = z)
-  pogr_1 <- data.frame(N0)
-  pogr_1$roost <- 1:z
-  pogr_1$year <- 1
-  colnames(pogr_1) <- c("count", "roost", "year")
-
+  ltsw_1 <- tibble(count = N0) %>% add_column(., roost = 1:z) %>% add_column(year = 1)
+ 
   nyr = 2
   
   while(nyr <= 20){
     pogr <- lapply(N0, growth) # population growth for that year
-    pogr <- melt(spl)
-    pogr$year <- nyr
+    pogr <- melt(pogr) %>% rename(., count = value, roost = L1) %>% add_column(year = nyr)
     
     ltsw <- switch1(pogr)
     ltsw <- switch2(ltsw)
@@ -46,54 +40,70 @@ splcom <- foreach(i = 1:100, .packages = c("tidyr", "dplyr", "mgcv", "reshape2")
   all <- mget(ls(pattern="ltsw_*")) %>%
     bind_rows()
   
-  act <- all[c(1:3)]
+  act <- all[c("roost", "year", "count")]
   act2 <- acast(act, roost~year, value.var = "count", fill = 0)
-  act2 <- melt(act2, value.name = "count")
-  colnames(act2) <- c("roost", "year", "count")
+  act2 <- melt(act2, value.name = "count") %>% rename(roost = Var1, year = Var2)
   
   org <- act %>% filter(roost <= z)
+  
   rm(all)
   rm(list = ls(pattern="ltsw_*"))
   
   obs <- accessability(org)
-  obs <- obs[c(1:3)]
+  obs <- obs[c("roost", "year", "count")]
   obs <- start_stop_monitoring(obs)
-  
-  act$rep <- i
-  act2$rep <- i
-  org$rep <- i
-  obs$rep <- i
   
   gama <- gam_func(act)
   gamb <- gam_func(act2)
   gamc <- gam_func(org)
   gamd <- gam_func(obs)
   
+  rmsea <- rmse_func(gama)
+  rmseb <- rmse_func(gamb)
+  rmsec <- rmse_func(gamc)
+  rmsed <- rmse_func(gamd)
+  
   inda <- index_func(act, gama)
   indb <- index_func(act2, gamb)
   indc <- index_func(org, gamc)
   indd <- index_func(obs, gamd)
   
-  return(list(inda, indb, indc, indd))
+  return(list(inda, indb, indc, indd, rmsea, rmseb, rmsec, rmsed))
   
   gc()
 }
 
 stopCluster(cl)
 
-a <- sapply(splcom,function(x) x[1])
+a <- sapply(swicom,function(x) x[1])
 a <- do.call("rbind", a)
 
-b <- sapply(splcom,function(x) x[2])
+b <- sapply(swicom,function(x) x[2])
 b <- do.call("rbind", b)
 
-c <- sapply(splcom,function(x) x[3])
+c <- sapply(swicom,function(x) x[3])
 c <- do.call("rbind", c)
 
-d <- sapply(splcom,function(x) x[4])
+d <- sapply(swicom,function(x) x[4])
 d <- do.call("rbind", d)
+
+e <- sapply(swicom,function(x) x[5])
+e <- do.call("rbind", e)
+
+f <- sapply(swicom,function(x) x[6])
+f <- do.call("rbind", f)
+
+g <- sapply(swicom,function(x) x[7])
+g <- do.call("rbind", g)
+
+h <- sapply(swicom,function(x) x[8])
+h <- do.call("rbind", h)
 
 write.csv(a, file = "a.csv")
 write.csv(b, file = "b.csv")
 write.csv(c, file = "c.csv")
 write.csv(d, file = "d.csv")
+write.csv(e, file = "e.csv")
+write.csv(f, file = "f.csv")
+write.csv(g, file = "g.csv")
+write.csv(h, file = "h.csv")

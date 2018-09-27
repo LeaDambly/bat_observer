@@ -7,44 +7,34 @@ growth <- function(Nt = N0, mu.r = 0, se.r = 0.0) {
   return(Ntplus1)
 }
 
-switch1 <- function(pogr){
+switch1 <- function(w){
   perc <-  runif(1, 0.1, 0.3)
-  
-  w <- pogr # the population for that year per site
-  colnames(w) <- c("count", "roost", "year")
   
   w2 <- w %>% sample_frac(perc) #roosts that switch
   
-  w3 <- suppressMessages(anti_join(w, w2)) #remove switched roosts from original df
+  w3 <- anti_join(w, w2, by = c("count", "roost", "year")) #remove switched roosts from original df
   
-  colnames(w2) <- c("count", "orgroost", "year")
-  w4 <- w2 #copy switched roosts
-  w4$count = 0  #set count to zero (this is the count of their origin roost)
+  w2 <- w2 %>% rename(orgroost = roost)
   
-  w3 <- w3 %>% bind_rows(w4) #add 0 counts to orig
+  w4 <- w2 %>% select(orgroost, year) %>% add_column(., count = 0)  #set count to zero (this is the count of their origin roost)
   
-  w3 <- w3 %>% mutate(r = ifelse(is.na(orgroost), roost, orgroost)) %>% arrange(r)
+  w3 <- w3 %>% bind_rows(w4) %>% mutate(r = ifelse(is.na(orgroost), roost, orgroost)) %>% arrange(r)
   
   w3 <- w3[c(1,3)]
   
-  w <-  w3 %>% 
-    
-    bind_rows(w2) %>% #top newly switched roosts on top of orig roosts
-    
-    tibble::rownames_to_column(., var = "roost")
+  w <- w3 %>% select(count, year) %>% bind_rows(w2) %>% rownames_to_column(., var = "roost")
+  
   w$roost <- as.numeric(w$roost)
   
   return(w)
 }
 
-switch2 <- function(ltsw){
+switch2 <- function(w){
   perc <-  runif(1, 0.5, 0.8)
-  
-  w <- ltsw
   
   w2 <- w %>% filter(!is.na(orgroost)) %>% sample_frac(perc)
   
-  w <- suppressMessages(anti_join(w, w2))
+  w <- anti_join(w, w2, by = c("roost", "count", "year", "orgroost"))
   
   w2$roost <- w2$orgroost
   
@@ -52,10 +42,7 @@ switch2 <- function(ltsw){
   
   w$count2 <- w2[match(w$roost, w2$roost),2]
   
-  w <- w %>% mutate(a = ifelse(is.na(count2), count, count2))
-  
-  w <- w[c(1,3,4,6)]
-  colnames(w) <- c("roost", "year", "orgroost", "count")
+  w <- w %>% mutate(a = ifelse(is.na(count2), count, count2)) %>% select(roost, year, orgroost, a) %>% rename(count = a)
   
   return(w)
   
@@ -146,6 +133,7 @@ gam_func <- function(sp, dfvec = c(6)){
              family = poisson(link = log), data = sp)
   gam
 }
+
 
 index_func <- function(sp, gam, dfvec = c(6)) {
   if(length(sp$count[is.na(sp$count)]) > 0) stop(
