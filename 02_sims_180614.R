@@ -5,32 +5,33 @@ library(foreach)
 library(doParallel)
 
 # make parallel----
-numCores <- detectCores()-2
+numCores <- detectCores()-1
 cl <- makeCluster(numCores)
 registerDoParallel(cl)
 
 # run sim----
-swicom <- foreach(i = 1:2, .packages = c("tibble", "tidyr", "dplyr", "mgcv", "reshape2")) %do%{
-  z = 300 #number of monitored roosts
+swicom <- foreach(i = 1:1, .packages = c("tibble", "tidyr", "dplyr", "mgcv", "reshape2")) %do%{
+  z = 20 #number of monitored roosts
   x = 66 #roost size avg
   
   # first year populations
   N0 <- rpois(lam = x, n = z)
-  ltsw_1 <- tibble(count = N0) %>% add_column(., roost = 1:z) %>% add_column(year = 1)
+  ltsw_1 <- tibble(count = N0) %>% add_column(., roost = 1:z) %>% add_column(year = 1) %>% add_column(swyr = 0)
  
+  pogr <- ltsw_1 %>% mutate(year = year + 1)
   nyr = 2
   
   while(nyr <= 20){
-    pogr <- lapply(N0, growth) # population growth for that year
-    pogr <- melt(pogr) %>% rename(., count = value, roost = L1) %>% add_column(year = nyr)
-    
+    pogr <- pogr %>% group_by(1:n()) %>% mutate(count = growth(count)) %>% ungroup() %>% select(-"1:n()")
+
     ltsw <- switch1(pogr)
     ltsw <- switch2(ltsw)
     
-    N0 = ltsw$count
     assign(paste("ltsw", nyr, sep = "_"), ltsw)
     
-    nyr = nyr+1
+    pogr <- ltsw %>% mutate(year = year + 1)
+    nyr <- nyr + 1
+    
     gc()
   }
   
@@ -39,34 +40,34 @@ swicom <- foreach(i = 1:2, .packages = c("tibble", "tidyr", "dplyr", "mgcv", "re
   
   all <- mget(ls(pattern="ltsw_*")) %>%
     bind_rows()
+  rm(list = ls(pattern="ltsw_*"))
   
   act <- all[c("roost", "year", "count")]
-  act2 <- acast(act, roost~year, value.var = "count", fill = 0)
-  act2 <- melt(act2, value.name = "count") %>% rename(roost = Var1, year = Var2)
   
-  org <- act %>% filter(roost <= z)
+  act <- acast(act, roost~year, value.var = "count", fill = 0)
+  act <- melt(act, value.name = "count") %>%
+    rename(roost = Var1, year = Var2)
+  
+  org <- act %>% dplyr::filter(roost <= z)
   
   rm(all)
-  rm(list = ls(pattern="ltsw_*"))
+ 
   
   obs <- accessability(org)
   obs <- obs[c("roost", "year", "count")]
   obs <- start_stop_monitoring(obs)
   
   gama <- gam_func(act)
-  gamb <- gam_func(act2)
-  gamc <- gam_func(org)
-  gamd <- gam_func(obs)
+  gamb <- gam_func(org)
+  gamc <- gam_func(obs)
   
   rmsea <- rmse_func(gama)
   rmseb <- rmse_func(gamb)
   rmsec <- rmse_func(gamc)
-  rmsed <- rmse_func(gamd)
   
   inda <- index_func(act, gama)
-  indb <- index_func(act2, gamb)
-  indc <- index_func(org, gamc)
-  indd <- index_func(obs, gamd)
+  indb <- index_func(org, gamb)
+  indc <- index_func(obs, gamc)
   
   return(list(inda, indb, indc, indd, rmsea, rmseb, rmsec, rmsed))
   

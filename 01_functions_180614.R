@@ -1,51 +1,96 @@
 # Simulation functions
 # 14 06 18 - Lea I Dambly
-#for no growth, change se.r = 0
-growth <- function(Nt = N0, mu.r = 0, se.r = 0.0) {
-  lambda <- exp(rnorm(n = 1, mean = mu.r, sd = se.r)) #growth rate lambda
-  Ntplus1 <- round(Nt * lambda, 0) #growth for that year
+growth <- function(Nt = N0, mu.r = 1, se.r = 0.1) {
+  # set the growth rate Lambda
+  lambda <- rnorm(n = 1, mean = mu.r, sd = se.r)
+  
+  # calculate new population size
+  Ntplus1 <- round(Nt * lambda, 0)
   return(Ntplus1)
 }
 
-switch1 <- function(w){
+switch1 <- function(swi){
+  # percentage of roosts that will switch
   perc <-  runif(1, 0.1, 0.3)
+
+  # create new tibble with roosts that have switched
+  swi2 <- swi %>% 
+    dplyr::filter(roost <= z & count > 0) %>% 
+    sample_frac(perc, replace = FALSE) %>% 
+    arrange(roost)
   
-  w2 <- w %>% sample_frac(perc) #roosts that switch
+  # create new tibble without the roosts that have switched
+  swi3 <- anti_join(swi, swi2, by = c("count", "roost", "year", "swyr")) %>% 
+    arrange(roost)
   
-  w3 <- anti_join(w, w2, by = c("count", "roost", "year")) #remove switched roosts from original df
+  # create new tibble where count is zero (because the original roosts are now empty)
+  swi4 <- swi2 %>% 
+    select(roost, year, swyr) %>% 
+    add_column(count = 0)
   
-  w2 <- w2 %>% rename(orgroost = roost)
+  # add swi4 back to swi3 - now the original roosts are empty
+  swi3 <- swi3 %>% 
+    bind_rows(swi4) %>% 
+    arrange(roost) 
   
-  w4 <- w2 %>% select(orgroost, year) %>% add_column(., count = 0)  #set count to zero (this is the count of their origin roost)
+  # rename roost to orgroost for the newly switched roosts
+  swi2 <- swi2 %>%
+    select(count, roost, swyr, year) %>% 
+    rename(orgroost = roost)
   
-  w3 <- w3 %>% bind_rows(w4) %>% mutate(r = ifelse(is.na(orgroost), roost, orgroost)) %>% arrange(r)
+  # add the newly switched roosts back to the entire tibble
+  swi <- swi3 %>% bind_rows(swi2)
   
-  w3 <- w3[c(1,3)]
+  # number of new roosts without roost number
+  num <- sum(is.na(swi$roost))
   
-  w <- w3 %>% select(count, year) %>% bind_rows(w2) %>% rownames_to_column(., var = "roost")
+  # the new roosts have NAs, we need to make them 0
+  swi$roost[is.na(swi$roost)] <- 0
   
-  w$roost <- as.numeric(w$roost)
+  # now we index the new roosts
+  swi <- swi %>%
+    mutate(roost = ifelse(roost == 0, seq(max(swi$roost)+1, max(swi$roost)+num, 1), roost)) %>%
+    arrange(roost) %>%
+  # and give the original z roosts an NA for the orgroost variable
+    mutate(orgroost = ifelse(roost <= z, NA, orgroost)) %>%
+  # finally add another year to swyr
+  mutate(swyr = ifelse((roost > z & count > 0), swyr+1, 0))
   
-  return(w)
+  return(swi)
 }
 
-switch2 <- function(w){
+switch2 <- function(swi){
+  # percentage of roosts that will switch back to their original
   perc <-  runif(1, 0.5, 0.8)
   
-  w2 <- w %>% filter(!is.na(orgroost)) %>% sample_frac(perc)
+  # create new tibble with the roosts that are coming back - has to have been 2 yrs since the switch
+  swi2 <- swi %>%
+    dplyr::filter(!is.na(orgroost) & swyr >= 2) %>% 
+    sample_frac(perc)
   
-  w <- anti_join(w, w2, by = c("roost", "count", "year", "orgroost"))
+  # if there aren't any to switch back, the function will end
+  if (dim(swi2)[1] == 0){
+    return(swi)
+  }else{
+
+    # create new tibble where switched roosts that will switch back now are removed
+    swi3 <- anti_join(swi, swi2, by = c("roost", "count", "year", "orgroost", "swyr"))
+
+    # make the orgroosts their actual roosts again
+    swi2 <- swi2 %>% 
+      mutate(roost = orgroost) %>% 
+      select(-orgroost)
   
-  w2$roost <- w2$orgroost
-  
-  w2$orgroost <- NA
-  
-  w$count2 <- w2[match(w$roost, w2$roost),2]
-  
-  w <- w %>% mutate(a = ifelse(is.na(count2), count, count2)) %>% select(roost, year, orgroost, a) %>% rename(count = a)
-  
-  return(w)
-  
+    # and put everything back together
+    swi <- left_join(swi3, swi2, by = "roost") %>%
+      select(-c(year.y, swyr.y)) %>%
+      mutate(count = ifelse(is.na(count.y), count.x, count.y)) %>%
+      rename(year = year.x) %>%
+      rename(swyr = swyr.x) %>%
+      select(count, roost, year, swyr, orgroost)
+      
+    return(swi)
+  }
 }
 
 split <- function(spl, k = 120, n = 3, yr = nyr){
@@ -88,27 +133,28 @@ split <- function(spl, k = 120, n = 3, yr = nyr){
   return(w)
 }
 
-# TO DO should people pick a roost up again that has been dropped after it become too unattractive?
-accessability <- function(obs){
-  # people will likely only monitor sites that are easily accessible/more attractive
-  roost <- obs %>% select(roost)
+accessibility <- function(obs, a = 0, b = 1, c = 1, d = 4){
+  # people will likely only monitor sites that are accessible
+  # TO DO: Comment on code
+
+  seqq <- seq(a,b,1)
   
-  # 1 = not attractive, 3 = very attractive
-  seqq <- c(1,1,2,2,2,3,3,3,3,3)
-  r <- length(roost$roost)/length(seqq)
-  acc <- sample(rep.int(seqq, r))
-  roost$acc <- acc
-  roost <- as.data.frame(roost)
-  obs$acc <- roost[match(obs$roost, roost$roost), 2]
+  slope <- (max(seqq) - min(seqq))/(max(obs$count)-min(obs$count))
   
-  # weighted random sized (between 65-85%) sample
-  perc <- runif(1, 0.65, 0.85)
-  obs <- obs %>% sample_frac(., size = perc, weight = acc)
-  return(obs)
-  }
+  int <- (slope*min(obs$count)-min(seqq))*(-1)
+  
+  obs <- obs %>% rowwise(.) %>% mutate(acc = ((slope*count)+int)^c)
+  
+  lth <- length(obs$count)/d
+  
+  perc <- runif(1, lth*2, lth*3)
+  
+  acc <- obs[sample(obs$count, perc, replace = FALSE, prob = obs$acc),]
+  
+  return(acc)
+}
 
 # TO DO sample with increasing probability? (ie the longer they sample, the more likely they are to go on)
-# something with weights?
 start_stop_monitoring <- function(mon) {
   # start monitoring at random and stop at random
   sam <- mon %>% group_by(roost) %>% sample_frac(., size = runif(1, 0.65, 0.85)) %>% arrange(roost, year)
