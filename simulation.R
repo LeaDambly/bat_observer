@@ -14,7 +14,7 @@ registerDoParallel(cl)
 # run sim----
 # i is number of repetitions
 # packages don't need to be loaded manually but do have to be installed
-simulation <- foreach(i = 1:10, .packages = c("R.utils","tibble", "dplyr","mgcv", "reshape2", "lme4")) %dopar%{
+simulation <- foreach(i = 1:10, .packages = c("R.utils","tibble", "dplyr","mgcv", "reshape2")) %dopar%{
   # define path to folder where functions are
   srcf <- "N:/RProjects/Bat_Observer/01_Simulation/Functions"
   sourceDirectory(srcf)
