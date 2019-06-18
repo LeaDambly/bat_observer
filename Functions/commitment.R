@@ -1,6 +1,6 @@
 # TO DO: describe function and parameters it takes
 
-motivation <- function(obs, pr = 0.3){
+commitment <- function(obs, pr = 0.3){
   
   mot <- obs %>%
     group_by(roost) %>%

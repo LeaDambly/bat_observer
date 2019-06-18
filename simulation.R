@@ -7,7 +7,7 @@ library(doParallel)
 
 # make parallel----
 # choose number of cores to run on
-numCores <- detectCores()
+numCores <- detectCores()-1
 # make local cluster
 cl <- makeCluster(numCores)
 registerDoParallel(cl)
@@ -15,7 +15,7 @@ registerDoParallel(cl)
 # run sim----
 # i is number of repetitions
 # packages don't need to be loaded manually but do have to be installed
-simulation <- foreach(i = 1:2, .packages = c("tibble", "dplyr","mgcv", "reshape2", "lme4")) %dopar%{
+simulation <- foreach(i = 1:10, .packages = c("tibble", "dplyr","mgcv", "reshape2", "lme4")) %dopar%{
   # define path to folder where functions are
   srcf <- "N:/RProjects/Bat_Observer/01_Simulation/Functions"
   sourceDirectory(srcf)
@@ -80,32 +80,32 @@ simulation <- foreach(i = 1:2, .packages = c("tibble", "dplyr","mgcv", "reshape2
     rename(roost = Var1, year = Var2) %>%
     as.tibble()
   
-  dl <- ads(act, c = 0.5)
-  dl_ml <- motivation(dl, pr = 0.1)
-  dl_mh <- motivation(dl, pr = 0.9)
+  dl <- adss(act, c = 0.5)
+  dl_ml <- commitment(dl, pr = 0.1)
+  dl_mh <- commitment(dl, pr = 0.9)
   
-  dh <- ads(act, c = 1.5)
-  dh_ml <- motivation(dh, pr = 0.1)
-  dh_mh <- motivation(dh, pr = 0.9)
+  dh <- adss(act, c = 1.5)
+  dh_ml <- commitment(dh, pr = 0.1)
+  dh_mh <- commitment(dh, pr = 0.9)
   
   inda <- indsp_func(act) %>%
     mutate(type = "Actual") %>%
     mutate(rmse = sqrt(mean((inda$index-index)^2)))
   
   indb <- indsp_func(dl_ml) %>%
-    mutate(type = "ADS low + Motivation low") %>%
+    mutate(type = "ADSSS low + commitment low") %>%
     mutate(rmse = sqrt(mean((inda$index-index)^2)))
   
   indc <- indsp_func(dl_mh) %>%
-    mutate(type = "ADS low + Motivation high") %>%
+    mutate(type = "ADSS low + commitment high") %>%
     mutate(rmse = sqrt(mean((inda$index-index)^2)))
   
   indd <- indsp_func(dh_ml) %>%
-    mutate(type = "ADS high + Motivation low") %>%
+    mutate(type = "ADSS high + commitment low") %>%
     mutate(rmse = sqrt(mean((inda$index-index)^2)))
   
   inde <- indsp_func(dh_mh) %>%
-    mutate(type = "ADS high + Motivation high") %>%
+    mutate(type = "ADSS high + commitment high") %>%
     mutate(rmse = sqrt(mean((inda$index-index)^2)))
   
   
