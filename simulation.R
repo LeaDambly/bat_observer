@@ -88,7 +88,9 @@ simulation <- foreach(i = 1:10, .packages = c("R.utils","tibble", "dplyr","mgcv"
   dh_mh <- commitment(dh, pr = 0.9)
   
   inda <- indsp_func(act) %>%
-    mutate(type = "Actual") %>%
+    mutate(type = "Actual")
+  
+  inda <- inda %>%
     mutate(rmse = sqrt(mean((inda$index-index)^2)))
   
   indb <- indsp_func(dl_ml) %>%
