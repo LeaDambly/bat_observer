@@ -14,10 +14,10 @@ registerDoParallel(cl)
 # run sim----
 # i is number of repetitions
 # packages don't need to be loaded manually but do have to be installed
-simulation <- foreach(i = 1:10, .packages = c("R.utils","tibble", "dplyr","mgcv", "reshape2")) %dopar%{
+simulation <- foreach(i = 1:10, .packages = c("tibble", "dplyr","mgcv", "reshape2")) %dopar%{
   # define path to folder where functions are
   srcf <- "N:/RProjects/Bat_Observer/01_Simulation/Functions"
-  sourceDirectory(srcf)
+  R.utils::sourceDirectory(srcf)
   
   ## set up parameters
   # z is the number of roosts
@@ -118,5 +118,5 @@ simulation <- foreach(i = 1:10, .packages = c("R.utils","tibble", "dplyr","mgcv"
   gc()
 }
 
-save(simulation, file = "low.RData")
+save(simulation, file = "N:/RProjects/Bat_Observer/Results/test1.RData")
 stopCluster(cl)

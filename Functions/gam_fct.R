@@ -16,19 +16,19 @@ indsp_func <- function(bats, dfvec = 6, q = 3)
   # Takes a fitted gam object produced by gam() and produces predictions given a new set of values for
   # the model covariates or the original values used for the model fit. Predictions can be accompanied
   # by standard errors, based on the posterior distribution of the model coefficients.
-  fit <- as.tibble(predict(gam_df, type = "terms", se.fit = TRUE)$fit) %>%
+  fit <- as_tibble(predict(gam_df, type = "terms", se.fit = TRUE)$fit) %>%
     select('s(year)') %>%
     rename(smooth = 's(year)')
   
-  se <- as.tibble(predict(gam_df, type = "terms", se.fit = TRUE)$se.fit)%>%
+  se <- as_tibble(predict(gam_df, type = "terms", se.fit = TRUE)$se.fit)%>%
     select('s(year)') %>%
     rename(error = 's(year)')
   
   # calculate confidence intervals
-  lcl <- as.tibble(fit - 1.96 * se) %>%
+  lcl <- as_tibble(fit - 1.96 * se) %>%
     rename(lower = smooth)
   
-  ucl <- as.tibble(fit + 1.96 * se)  %>%
+  ucl <- as_tibble(fit + 1.96 * se)  %>%
     rename(upper = smooth) %>%
     mutate(row_name = row_number())
   
